@@ -1,10 +1,11 @@
-from sklearn.model_selection import KFold
 import numpy as np
 import torch
 import torch.nn as nn
-from lstm_data_loader import *
+from torch.utils.data import DataLoader, SubsetRandomSampler
+from lstm_data_loader import MoodDataset
 from lstm_classifier import LSTMClassifier
 from sklearn.metrics import f1_score
+from sklearn.model_selection import KFold
 
 def cross_validate_and_save_models(csv_file, input_size, hidden_size, num_layers, num_classes, num_epochs=25, batch_size=32, learning_rate=0.001, save_path='../../data/models/'):
     dataset = MoodDataset(csv_file)
@@ -34,9 +35,9 @@ def cross_validate_and_save_models(csv_file, input_size, hidden_size, num_layers
                 loss.backward()
                 optimizer.step()
             
-        fold_save_path = f"{save_path}model_fold_{fold}.pth"
+        fold_save_path = f"{save_path}lstm_fold_{fold}.pth"
         torch.save(model.state_dict(), fold_save_path)
-        print(f'Model for fold {fold} saved to {fold_save_path}')
+        print(f'LSTM model for fold {fold} saved to {fold_save_path}')
 
         # Evaluate and calculate F1 score
         y_true = []
@@ -83,14 +84,3 @@ def train_on_entire_dataset(csv_file, input_size, hidden_size, num_layers, num_c
     return model
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-final_model = train_on_entire_dataset(
-    csv_file='../../data/train_set.csv',
-    input_size=18,
-    hidden_size=64,
-    num_layers=2,
-    num_classes=10,
-    num_epochs=50,
-    batch_size=32,
-    learning_rate=0.001
-)
