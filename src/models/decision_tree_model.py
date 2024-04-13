@@ -13,7 +13,7 @@ X = data.drop(columns=['mood'])
 y = data['mood']
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-#Creating the model and training it - number of estimators and random_state can be tuned later when we have the real data
+# Creating the model and training it - number of estimators and random_state can be tuned later when we have the real data
 rf_classifier = RandomForestClassifier(n_estimators=100, random_state=42)
 rf_classifier.fit(X_train, y_train)
 
@@ -21,7 +21,6 @@ rf_classifier.fit(X_train, y_train)
 print(X_test.shape)
 y_pred = rf_classifier.predict(X_test)
 
-#Model Evaluation
+# Model Evaluation
 accuracy = accuracy_score(y_test, y_pred)
 print("Accuracy:", accuracy)
-
