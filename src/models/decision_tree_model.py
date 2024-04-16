@@ -20,10 +20,12 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 """
 
 train_data = pd.read_csv('../../data/preprocessed/train_set.csv')
+train_data = train_data.iloc[:, :train_data.columns.get_loc('month') + 1]
 train_data['mood'] = train_data['mood'].round()
 train_data['id'] = train_data['id'].str[-2:]
 
 test_data = pd.read_csv('../../data/preprocessed/test_set.csv')
+test_data = test_data.iloc[:, :test_data.columns.get_loc('month') + 1]
 test_data['mood'] = test_data['mood'].round()
 test_data['id'] = test_data['id'].str[-2:]
 
@@ -46,11 +48,10 @@ rand_search = RandomizedSearchCV(estimator=rf, param_distributions=param_dist, n
 rand_search.fit(X_train, y_train)
 
 idx_3 = np.where(y_train == 3)[0][0]
-print('idx_3:', idx_3)
-print(y_train.iloc[idx_3])
+# print('idx_3:', idx_3)
+# print(y_train.iloc[idx_3])
 X_test.iloc[-1] = X_train.iloc[idx_3]
 y_test.iloc[-1] = y_train.iloc[idx_3]
-
 
 best_params = rand_search.best_params_
 best_rf = RandomForestClassifier(**best_params, random_state=42)
@@ -65,7 +66,6 @@ print('Cross-Entropy Loss:', logloss)
 plt.plot(range(len(y_test)), y_test, color='red', label='Actual Mood', marker='o', linestyle='--', markersize=3)
 plt.plot(range(len(y_pred)), y_pred, color='blue', label='Predicted Mood', marker='o', linestyle='--', markersize=3)
 plt.legend()
+plt.ylabel("Mood")
 plt.title('Predicted vs. Actual Mood')
 plt.show()
-
-# print("Cross-Entropy Loss:", logloss)
