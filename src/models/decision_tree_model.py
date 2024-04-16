@@ -8,11 +8,11 @@ from scipy.stats import randint
 """From Before Feature Engineering
 #Loading in the data - currently just the toy data from Amir
 data = pd.read_csv('../../data/preprocessed/toy_data.csv')
-data['mood'] = data['mood'].round() #Can't be continuous
+data['mood'] = data['mood'].round()  # Can't be continuous
 data['time'] = (pd.to_datetime(data['time']) - pd.Timestamp('1970-01-01')) // pd.Timedelta('1s')
 
-#Separating the feature data and the target data
-X = data.drop(columns=['mood'])  
+# Separating the feature data and the target data
+X = data.drop(columns=['mood'])
 y = data['mood']
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 """
@@ -51,4 +51,3 @@ y_pred_probability = best_rf.predict_proba(X_test)
 logloss = log_loss(y_test, y_pred_probability)
 
 print("Cross-Entropy Loss:", logloss)
-print("Best Parameters:", best_params)
