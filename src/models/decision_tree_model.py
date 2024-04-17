@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, log_loss, make_scorer
+from sklearn.metrics import accuracy_score, log_loss, make_scorer, mean_squared_error, mean_absolute_error
 from sklearn.model_selection import RandomizedSearchCV
 from scipy.stats import randint
 import numpy as np
