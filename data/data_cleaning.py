@@ -20,19 +20,19 @@ data_pivot.reset_index(inplace=True)
 
 """Removing Outliers Based on Visual Inspection"""
 
-# Negative value from 'builtin' 
+# Negative value from 'builtin'
 negative_builtin_indices = np.where(data_pivot['appCat.builtin'] < 0)
 data_pivot = data_pivot.drop(negative_builtin_indices[0])
 
-#Extreme positive value from 'entertainment' 
+# Extreme positive value from 'entertainment'
 positive_ent_indices = np.where(data_pivot['appCat.builtin'] > 30000)
 data_pivot = data_pivot.drop(positive_ent_indices[0])
 
-#Extreme positive value from 'office' 
+# Extreme positive value from 'office'
 positive_office_indices = np.where(data_pivot['appCat.office'] > 30000)
 data_pivot = data_pivot.drop(positive_office_indices[0])
 
-#Extreme positive value from 'social' 
+# Extreme positive value from 'social'
 positive_social_indices = np.where(data_pivot['appCat.social'] > 30000)
 data_pivot = data_pivot.drop(positive_social_indices[0])
 
@@ -62,17 +62,17 @@ day_data.sort_values(['id', 'day'], inplace=True)
 for column in day_data.columns:
     if 'appCat.' in column:
         day_data[column].fillna(0, inplace=True)
-        
+
 day_data.dropna(subset=['mood'], inplace=True)
 
 for column in ['activity', 'circumplex.arousal', 'circumplex.valence']:
     print(f"Processing column: {column}")
     for user in day_data['id'].unique():
         user_data = day_data[day_data['id'] == user][column]
-        
+
         # Perform linear interpolation
         interpolated_data = user_data.interpolate(method='linear')
-        
+
         # Check if there are still NaNs and attempt to fill them
         if interpolated_data.isna().any():
             # Fill NaNs at the beginning and end by forward and backward filling
