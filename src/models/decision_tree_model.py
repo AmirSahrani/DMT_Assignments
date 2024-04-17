@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, log_loss, make_scorer
+from sklearn.metrics import accuracy_score, log_loss, make_scorer, mean_squared_error, mean_absolute_error
 from sklearn.model_selection import RandomizedSearchCV
 from scipy.stats import randint
 import numpy as np
@@ -42,8 +42,12 @@ best_rf.fit(X_train, y_train)
 y_pred_probability = best_rf.predict_proba(X_test)
 logloss = log_loss(y_test, y_pred_probability)
 y_pred = y_pred_probability.argmax(axis=1)+min(y_test)
+mse = mean_squared_error(y_test, y_pred)
+mae = mean_absolute_error(y_test, y_pred)
 print('Accuracy:', accuracy_score(y_test, y_pred))
 print('Cross-Entropy Loss:', logloss)
+print('Mean Squared Error:', mse)
+print('Mean Absolute Error:', mae)
 
 plt.plot(range(len(y_test)), y_test, color='red', label='Actual Mood', marker='o', linestyle='--', markersize=3)
 plt.plot(range(len(y_pred)), y_pred, color='blue', label='Predicted Mood', marker='o', linestyle='--', markersize=3)
