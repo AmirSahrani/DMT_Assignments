@@ -1,4 +1,3 @@
-# train.py
 import argparse
 from lstm_model import cross_validate_and_save_models, train_on_entire_dataset
 
@@ -10,14 +9,21 @@ def main():
 
     if args.mode == 'cross-validate':
         cross_validate_and_save_models(
-            csv_file='../../data/train_set.csv',
-            input_size=18,
+            csv_file='../../data/preprocessed/train_set.csv',
+            input_size=22,
             hidden_size=64,
             num_layers=2,
             num_classes=10,
             num_epochs=50,
             batch_size=32,
             learning_rate=0.001,
+            features=[
+                'activity', 'appCat.builtin', 'appCat.communication', 'appCat.entertainment',
+                'appCat.finance', 'appCat.game', 'appCat.office',
+                'appCat.social', 'appCat.travel', 'appCat.utilities',
+                'appCat.weather', 'call', 'circumplex.arousal', 'circumplex.valence',
+                'screen', 'sms', 'hour', 'day_of_week', 'day_of_month', 'month', 'hour_sin', 'hour_cos'
+            ],
             save_path='../../data/models/'
         )
     elif args.mode == 'train-full':
