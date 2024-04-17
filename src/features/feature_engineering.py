@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import pdb
 
 filepath = '../../data/preprocessed/day_data.csv'  
 data = pd.read_csv(filepath)
@@ -9,39 +10,36 @@ data['mood'] = data['mood'].round().astype(int)
 
 # Convert 'day' and 'time' columns to datetime
 data['day'] = pd.to_datetime(data['day'])
-data['time'] = pd.to_datetime(data['time'])
 
 # Temporal features to capture the cyclical nature of human behavior 
 # to learn mood fluctuations depending on the time of day (morning vs. night) or day of the week (weekday vs. weekend)
-data['hour'] = data['time'].dt.hour
-data['day_of_week'] = data['time'].dt.dayofweek
-data['day_of_month'] = data['time'].dt.day
-data['month'] = data['time'].dt.month
-
-# Convert hour into cyclic features (e.g., hour 23 is close to hour 0)
-data['hour_sin'] = np.sin(2 * np.pi * data['hour']/24)
-data['hour_cos'] = np.cos(2 * np.pi * data['hour']/24)
+data['day_of_week'] = data['day'].dt.dayofweek
+data['day_of_month'] = data['day'].dt.day
+data['month'] = data['day'].dt.month
 
 # Sort data by 'id' and 'day'
 data_sorted = data.sort_values(by=['id', 'day'])
 
 # Create lagged features for the past 5 days for each individual
-feature_columns = [ 'activity','circumplex.arousal','circumplex.valence']
+feature_columns = [ 'activity','circumplex.arousal','circumplex.valence', 'mood']
 for feature in feature_columns:
     for lag in range(1, 6):
         data_sorted[f'{feature}_lag_{lag}'] = data_sorted.groupby('id')[feature].shift(lag)
 
-# Drop rows with NaN values resulting from lagging
-data_cleaned = data_sorted.dropna(subset=[f'{feature}_lag_5' for feature in feature_columns])
+# Fill NaN values with zeros resulting from lagging
+lag_range = range(1, 6)
+fillna_dict = {f'{feature}_lag_{lag}': 0 for feature in feature_columns for lag in lag_range}
+data_cleaned = data_sorted.fillna(fillna_dict)
 
-# Calculate the average mood for each day per individual
-daily_mood = data_cleaned.groupby(['id', 'day'])['mood'].mean().reset_index(name='mood_avg')
+if 'mood' in data_cleaned.columns:
+    cols = [col for col in data_cleaned.columns if col != 'mood']
+    cols.append('mood')
 
-# Merge the average mood with the cleaned data
-data_with_avg_mood = data_cleaned.merge(daily_mood, on=['id', 'day'])
+    data_cleaned = data_cleaned[cols]
+else:
+    print("The 'mood' column does not exist in the DataFrame.")
 
-# Save the engineered data to a CSV file
 engineered_data_path = '../../data/preprocessed/new_engineered_data.csv' 
-data_with_avg_mood.to_csv(engineered_data_path, index=False)
+data_cleaned.to_csv(engineered_data_path, index=False)
 
 print(f'Engineered data saved to {engineered_data_path}')
