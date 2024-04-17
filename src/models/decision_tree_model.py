@@ -46,7 +46,7 @@ rand_search.fit(X_train, y_train)
 class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_train), y=y_train)
 class_weight_dict = dict(enumerate(class_weights))
 best_params = rand_search.best_params_
-best_rf = RandomForestClassifier(**best_params, random_state=42)
+best_rf = RandomForestClassifier(**best_params, random_state=42, class_weight='balanced')
 best_rf.fit(X_train, y_train)
 
 y_pred_probability = best_rf.predict_proba(X_test)
@@ -63,7 +63,7 @@ y_test = y_test + shift
 print('Accuracy:', accuracy_score(y_test, y_pred))
 print('Cross-Entropy Loss:', logloss)
 print('MSE', np.mean((y_test - y_pred) ** 2))
-print('MAE', np.mean(np.abs()))
+print('MAE', np.mean(np.abs(y_test - y_pred)))
 
 plt.plot(range(len(y_test)), y_test, color='red', label='Actual Mood', marker='o', linestyle='--', markersize=3)
 plt.plot(range(len(y_pred)), y_pred, color='blue', label='Predicted Mood', marker='o', linestyle='--', markersize=3)
