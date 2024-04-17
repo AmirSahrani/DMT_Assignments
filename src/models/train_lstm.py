@@ -9,7 +9,7 @@ def main():
 
     if args.mode == 'cross-validate':
         cross_validate_and_save_models(
-            csv_file='../../data/preprocessed/train_set.csv',
+            csv_file='../../data/preprocessed/train_final.csv',
             input_size=22,
             hidden_size=64,
             num_layers=2,

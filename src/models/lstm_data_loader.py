@@ -4,11 +4,8 @@ import torch
 
 class MoodDataset(Dataset):
     def __init__(self, csv_file, included_columns, sequence_length):
-        # Load the data
         self.data = pd.read_csv(csv_file)
-
-        # Filter the DataFrame to only include specified columns
-        self.data = self.data[included_columns + ['mood']]  # Include 'mood' explicitly
+        self.data = self.data[included_columns + ['mood']]
 
         # Extracting labels ('mood' column) and converting them to long type for classification
         self.labels = torch.tensor(self.data['mood'].values).long()
@@ -28,7 +25,6 @@ class MoodDataset(Dataset):
         return feature_sequences, label_sequences
 
     def __len__(self):
-        # Return the number of sequences available
         return len(self.feature_sequences)
 
     def __getitem__(self, index):
