@@ -1,10 +1,11 @@
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.linear_model import Ridge
+from sklearn.kernel_ridge import KernelRidge
+from sklearn.model_selection import GridSearchCV
 from sklearn.feature_selection import SequentialFeatureSelector
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.model_selection import train_test_split
 
 
 def data_numeric(data):
@@ -12,17 +13,6 @@ def data_numeric(data):
     return data.drop(columns=non_numeric_columns)  # Drop non-numeric columns
 
     # Perform one-hot encoding and concatenate all at once
-
-
-def shift_moods(df):
-    # Shift the 'mood' column within each group defined by 'id'
-    df['next_mood'] = df.groupby('id')['mood'].shift(-1)
-    # Drop the last entry of each group because its 'next_mood' will be NaN
-    df = df.dropna(subset=['next_mood'])
-
-    # make subset dtype int inplace
-    df['next_mood'] = df['next_mood'].astype(int)
-    return df
 
 
 def feature_selection(X, y):
@@ -36,25 +26,21 @@ def feature_selection(X, y):
 
 
 def main():
-    time_columns = ['time', 'hour', 'day_of_week', 'day_of_month', 'month', 'hour_sin', 'hour_cos']
     # Load and preprocess data
     data = pd.read_csv('../../data/preprocessed/train_final.csv')
     # data = data.drop(columns=time_columns, axis=1)
-    data = shift_moods(data)
     data_numerical = data_numeric(data)
 
     test_data = pd.read_csv('../../data/preprocessed/test_final.csv')
     # test_data = test_data.drop(columns=time_columns, axis=1)
-    test_data = shift_moods(test_data)
     test_data_numerical = data_numeric(test_data)
     print(len(data_numerical.columns))
 
     # Define features and target
-    y_train = data_numerical.pop('next_mood').values
+    y_train = data_numerical.pop('mood_lag_5').values
     X_train = data_numerical.values
-    y_test = test_data_numerical.pop('next_mood').values
+    y_test = test_data_numerical.pop('mood_lag_5').values
     X_test = test_data_numerical.values
-
 
     # output shapes of the split data
     print(f"X_train shape: {X_train.shape}, X_test shape: {X_test.shape}, y_train shape: {y_train.shape}, y_test shape: {y_test.shape}")
@@ -78,15 +64,31 @@ def main():
     ''')
 
     # Train Gaussian Process Regressor on selected features
-    # gp = GaussianProcessRegressor()
+    # gp = GaussianProcessRegressor(alpha=1e-2, n_restarts_optimizer=10, normalize_y=True, random_state=42)
     # Using ridge regression
-    gp = Ridge()
-    gp.fit(X_train, y_train)
+    gp = KernelRidge()
+    methods = ['additive_chi2', 'chi2', 'linear', 'poly', 'polynomial', 'rbf', 'laplacian', 'sigmoid', 'cosine']
+    param_grid = {'kernel': methods}
 
-    print(f'Train Score: {gp.score(X_train, y_train):.2f}')
+    # Perform grid search with cross-validation
+    folds = 5
+    grid_search = GridSearchCV(estimator=gp, param_grid=param_grid, cv=folds)
+    grid_search.fit(X_train, y_train)
 
-    y_pred = gp.predict(X_test)
-    y_pred = np.round(y_pred)
+    # Get the best model and its parameters
+    best_model = grid_search.best_estimator_
+    best_params = grid_search.best_params_
+    best_method = best_params['kernel']
+
+    print(f"Best Kernel Method: {best_method}")
+    print(f"Best Model Parameters: {best_params}")
+    print(f"Best Model Train Score: {best_model.score(X_train, y_train):.2f}")
+    print(f"Best Model Test Score: {best_model.score(X_test, y_test):.2f}")
+
+    gp = KernelRidge(kernel=best_method).fit(X_train, y_train)
+
+    y_pred_unround = gp.predict(X_test)
+    y_pred = np.round(y_pred_unround)
 
     print(f'''
     -------------------
@@ -96,11 +98,12 @@ def main():
     -------------------
     ''')
 
-    mse = np.mean((y_pred - y_test) ** 2)
-    mae = np.mean(np.abs(y_pred - y_test))
+    mse = np.mean((y_pred_unround - y_test) ** 2)
+    mae = np.mean(np.abs(y_pred_unround - y_test))
 
     print(f'Mean Squared Error: {mse:.2f}')
     print(f'Mean Absolute Error: {mae:.2f}')
+    print(f'Accuracy: {sum(y_pred == y_test)/len(y_test)}%')
 
     plt.plot(np.arange(len(y_pred)), y_pred, label='Predicted')
     plt.plot(np.arange(len(y_test)), y_test, label='True')
