@@ -1,33 +1,28 @@
-from torch.utils.data import Dataset
 import pandas as pd
+from torch.utils.data import Dataset
 import torch
+import pdb
 
 class MoodDataset(Dataset):
-    def __init__(self, csv_file, included_columns, sequence_length):
-        self.data = pd.read_csv(csv_file)
-        self.data = self.data[included_columns + ['mood']]
+    def __init__(self, csv_file):
+        """
+        Args:
+            csv_file (string): Path to the csv file with data.
+        """
+        self.data_frame = pd.read_csv(csv_file)
 
-        # Extracting labels ('mood' column) and converting them to long type for classification
-        self.labels = torch.tensor(self.data['mood'].values).long()
+        self.features = self.data_frame.drop(columns=['id', 'day', 'time', 'mood', 'appCat.unknown', 'appCat.other', 'appCat.communication', 'sms', 'appCat.utilities', 'appCat.game'])
+        self.targets = self.data_frame['mood']
 
-        # Drop the 'mood' column from features to ensure it's not included in the input features
-        self.features = self.data.drop(columns=['mood']).values
-        
-        # Create sequences of features and labels
-        self.feature_sequences, self.label_sequences = self._create_sequences(sequence_length)
-
-    def _create_sequences(self, sequence_length):
-        # Initialize lists to hold sequences of features and labels
-        feature_sequences, label_sequences = [], []
-        for i in range(len(self.features) - sequence_length):
-            feature_sequences.append(self.features[i:i + sequence_length])
-            label_sequences.append(self.labels[i + sequence_length])
-        return feature_sequences, label_sequences
+        self.features = torch.tensor(self.features.values, dtype=torch.float32)
+        self.targets = torch.tensor(self.targets.values, dtype=torch.long)
 
     def __len__(self):
-        return len(self.feature_sequences)
+        return len(self.data_frame)
 
-    def __getitem__(self, index):
-        # Return a tuple of feature sequence and corresponding label for the given index
-        return torch.tensor(self.feature_sequences[index], dtype=torch.float), self.label_sequences[index]
-
+    def __getitem__(self, idx):
+        return self.features[idx], self.targets[idx]
+    
+    def get_num_features(self):
+        return self.features.shape[1]
+        
