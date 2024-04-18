@@ -45,10 +45,10 @@ def cross_validate(dataset, model_type, n_splits, batch_size, input_size, hidden
         train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_subsampler)
         val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_subsampler)
 
-        if model_type == 'classifier':
+        if model_type == 'classification':
             model = LSTMClassifier(input_size, hidden_size, num_layers, output_size).to(device)
             criterion = nn.CrossEntropyLoss()
-        elif model_type == 'regressor':
+        elif model_type == 'regression':
             model = LSTMRegressor(input_size, hidden_size, num_layers, output_size).to(device)
             criterion = nn.MSELoss()
         
@@ -66,10 +66,10 @@ def cross_validate(dataset, model_type, n_splits, batch_size, input_size, hidden
 
 def full_training(dataset, model_type, batch_size, input_size, hidden_size, num_layers, output_size, num_epochs, learning_rate, device):
     train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-    if model_type == 'classifier':
+    if model_type == 'classification':
         model = LSTMClassifier(input_size, hidden_size, num_layers, output_size).to(device)
         criterion = nn.CrossEntropyLoss()
-    elif model_type == 'regressor':
+    elif model_type == 'regression':
         model = LSTMRegressor(input_size, hidden_size, num_layers, output_size).to(device)
         criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -92,11 +92,12 @@ def main():
     output_size = 1   # For regressor
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    train_dataset = MoodDataset(csv_file='../../data/preprocessed/train_final.csv')
+    # model_type = 'classification' 
+    model_type = 'regression'
+
+    train_dataset = MoodDataset(csv_file='../../data/preprocessed/train_regression.csv', mode=model_type)
     input_size = train_dataset.get_num_features()
     print(f"Number of features: {input_size}")
-
-    model_type = 'classifier'  # or 'regressor'
 
     # Cross-validate using Time Series Split
     fold_results = cross_validate(train_dataset, model_type, n_splits, batch_size, input_size, hidden_size, num_layers, num_classes if model_type == 'classifier' else output_size, num_epochs, learning_rate, device)
