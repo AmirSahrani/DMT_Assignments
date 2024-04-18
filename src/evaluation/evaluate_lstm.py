@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 sys.path.append('../models/') 
 from lstm_data_loader import MoodDataset
-from lstm_classifier import LSTMClassifier
+from lstm_model import LSTMClassifier
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
