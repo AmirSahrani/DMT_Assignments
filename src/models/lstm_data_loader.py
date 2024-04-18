@@ -13,7 +13,7 @@ class MoodDataset(Dataset):
         self.data_frame = pd.read_csv(csv_file)
         self.mode = mode
 
-        self.features = self.data_frame.drop(columns=['id', 'day', 'time', 'mood', 'appCat.unknown', 'appCat.other', 'appCat.communication', 'sms', 'appCat.utilities', 'appCat.game'])
+        self.features = self.data_frame.drop(columns=['id', 'day', 'time', 'mood', 'appCat.unknown', 'appCat.other'])
         self.features = torch.tensor(self.features.values, dtype=torch.float32)
 
         if mode == 'classification':

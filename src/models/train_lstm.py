@@ -92,21 +92,21 @@ def main():
     output_size = 1   # For regressor
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # model_type = 'classification' 
-    model_type = 'regression'
+    model_type = 'classification' 
+    # model_type = 'regression'
 
-    train_dataset = MoodDataset(csv_file='../../data/preprocessed/train_regression.csv', mode=model_type)
+    train_dataset = MoodDataset(csv_file='../../data/preprocessed/train_final.csv', mode=model_type)
     input_size = train_dataset.get_num_features()
     print(f"Number of features: {input_size}")
 
     # Cross-validate using Time Series Split
-    fold_results = cross_validate(train_dataset, model_type, n_splits, batch_size, input_size, hidden_size, num_layers, num_classes if model_type == 'classifier' else output_size, num_epochs, learning_rate, device)
+    fold_results = cross_validate(train_dataset, model_type, n_splits, batch_size, input_size, hidden_size, num_layers, num_classes if model_type == 'classification' else output_size, num_epochs, learning_rate, device)
     average_validation_loss = np.mean(fold_results)
     print(f"Cross-validation results: {fold_results}")
     print(f"Average validation loss: {average_validation_loss}")
 
     # Full training on the entire dataset
-    full_training(train_dataset, model_type, batch_size, input_size, hidden_size, num_layers, num_classes if model_type == 'classifier' else output_size, num_epochs, learning_rate, device)
+    full_training(train_dataset, model_type, batch_size, input_size, hidden_size, num_layers, num_classes if model_type == 'classification' else output_size, num_epochs, learning_rate, device)
 
 if __name__ == '__main__':
     main()
