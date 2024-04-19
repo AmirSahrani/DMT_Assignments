@@ -10,7 +10,7 @@ def main():
     if args.mode == 'cross-validate':
         cross_validate_and_save_models(
             csv_file='../../data/preprocessed/train_final.csv',
-            input_size=22,
+            input_size=34,
             hidden_size=64,
             num_layers=2,
             num_classes=10,
@@ -18,11 +18,15 @@ def main():
             batch_size=32,
             learning_rate=0.001,
             features=[
-                'activity', 'appCat.builtin', 'appCat.communication', 'appCat.entertainment',
+                'appCat.builtin', 'appCat.communication', 'appCat.entertainment',
                 'appCat.finance', 'appCat.game', 'appCat.office',
                 'appCat.social', 'appCat.travel', 'appCat.utilities',
-                'appCat.weather', 'call', 'circumplex.arousal', 'circumplex.valence',
-                'screen', 'sms', 'hour', 'day_of_week', 'day_of_month', 'month', 'hour_sin', 'hour_cos'
+                'appCat.weather', 'call', 'circumplex.arousal_lag_1', 'circumplex.arousal_lag_2',
+                'circumplex.arousal_lag_3', 'circumplex.arousal_lag_4', 'circumplex.arousal_lag_5',
+                'circumplex.valence_lag_1', 'circumplex.valence_lag_2', 'circumplex.valence_lag_3',
+                'circumplex.valence_lag_4', 'circumplex.valence_lag_5', 'screen', 'sms', 'hour',
+                'day_of_week', 'day_of_month', 'month', 'hour_sin', 'hour_cos',
+                'activity_lag_1', 'activity_lag_2', 'activity_lag_3', 'activity_lag_4', 'activity_lag_5'
             ],
             save_path='../../data/models/'
         )
