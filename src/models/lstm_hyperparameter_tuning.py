@@ -1,104 +1,100 @@
-import optuna
-import csv
-import numpy as np
-from lstm_model import MoodDataset, LSTMClassifier
-from torch.utils.data import DataLoader, SubsetRandomSampler
-import torch.nn as nn
 import torch
-from sklearn.model_selection import KFold
-from optuna.trial import TrialState
+import torch.nn as nn
+import numpy as np
+import pandas as pd
+from torch.utils.data import DataLoader, Subset
+from sklearn.model_selection import TimeSeriesSplit
+import optuna
+from lstm_model import LSTMClassifier, LSTMRegressor
+from lstm_data_loader import MoodDataset 
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+def train_and_evaluate(model, train_loader, val_loader, criterion, optimizer, device, num_epochs):
+    model.train()
+    for epoch in range(num_epochs):
+        for inputs, labels in train_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
 
-def lstm_hyperparameter_tuning(csv_file, features, num_trials=100, num_folds=5, csv_out='hyperparam_results.csv'):
-    def objective(trial):
-        hidden_size = trial.suggest_int('hidden_size', 16, 128)
-        num_layers = trial.suggest_int('num_layers', 1, 3)
-        batch_size = trial.suggest_categorical('batch_size', [16, 32, 64, 128])
-        learning_rate = trial.suggest_loguniform('learning_rate', 1e-5, 1e-1)
-        sequence_length = trial.suggest_int('sequence_length', 3, 10)
-        num_epochs = trial.suggest_int('num_epochs', 5, 20)
-        
-        dataset = MoodDataset(csv_file, features, sequence_length)
-        input_size = dataset.features.shape[-1]
-        num_classes = 10 
-        
-        fold_losses = []
-        kfold = KFold(n_splits=num_folds, shuffle=True, random_state=42)
+    model.eval()
+    total_val_loss = 0.0
+    total_samples = 0
+    with torch.no_grad():
+        for inputs, labels in val_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            total_val_loss += loss.item() * inputs.size(0)
+            total_samples += inputs.size(0)
 
-        for fold, (train_ids, test_ids) in enumerate(kfold.split(dataset)):
-            train_subsampler = SubsetRandomSampler(train_ids)
-            test_subsampler = SubsetRandomSampler(test_ids)
-            train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_subsampler)
-            test_loader = DataLoader(dataset, batch_size=batch_size, sampler=test_subsampler)
+    return total_val_loss / total_samples
 
-            # Model setup
-            model = LSTMClassifier(input_size, hidden_size, num_layers, num_classes).to(device)
+def objective(trial, device, dataset, model_type):
+    batch_size = trial.suggest_categorical('batch_size', [32, 64, 128])
+    learning_rate = trial.suggest_float('learning_rate', 1e-5, 1e-1, log=True)
+    num_layers = trial.suggest_int('num_layers', 1, 4)
+    hidden_size = trial.suggest_categorical('hidden_size', [32, 64, 128, 256])
+    num_epochs = trial.suggest_int('num_epochs', 5, 60)
+
+    tscv = TimeSeriesSplit(n_splits=5)
+    fold_losses = []
+
+    for train_idx, val_idx in tscv.split(dataset):
+        train_subset = Subset(dataset, train_idx)
+        val_subset = Subset(dataset, val_idx)
+
+        train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=False)
+        val_loader = DataLoader(val_subset, batch_size=batch_size, shuffle=False)
+
+        input_size = dataset.get_num_features()
+        output_size = 1 if model_type == 'regression' else 10
+
+        if model_type == 'classification':
+            model = LSTMClassifier(input_size, hidden_size, num_layers, output_size).to(device)
             criterion = nn.CrossEntropyLoss()
-            optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+        elif model_type == 'regression':
+            model = LSTMRegressor(input_size, hidden_size, num_layers, output_size).to(device)
+            criterion = nn.MSELoss()
 
-            # Train the model
-            for epoch in range(num_epochs):
-                model.train()
-                total_loss = 0
-                for data, labels in train_loader:
-                    data, labels = data.to(device), labels.to(device)
-                    optimizer.zero_grad()
-                    outputs = model(data)
-                    loss = criterion(outputs, labels)
-                    loss.backward()
-                    optimizer.step()
-                    total_loss += loss.item()
-                avg_loss = total_loss / len(train_loader)
+        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-            # Evaluate the model on the validation fold
-            model.eval()
-            validation_loss = 0
-            with torch.no_grad():
-                for data, labels in test_loader:
-                    data, labels = data.to(device), labels.to(device)
-                    outputs = model(data)
-                    loss = criterion(outputs, labels)
-                    validation_loss += loss.item()
+        # Train and evaluate on the current fold
+        val_loss = train_and_evaluate(model, train_loader, val_loader, criterion, optimizer, device, num_epochs)
+        fold_losses.append(val_loss)
 
-            fold_losses.append(validation_loss / len(test_loader))
-            trial.report(np.mean(fold_losses), fold)
+    # Average loss across folds
+    avg_loss = np.mean(fold_losses)
+    trial.report(avg_loss, len(fold_losses))
 
-            # stop trial if unlikely to lead to a better result than the best one obtained
-            if trial.should_prune():
-                raise optuna.exceptions.TrialPruned()
-            
-        # The objective is to minimize the average loss across the folds
-        return np.mean(fold_losses)
+    # Prune unpromising trials
+    if trial.should_prune():
+        raise optuna.exceptions.TrialPruned()
 
+    return avg_loss
+
+def main():
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model_type = 'regression'
+    dataset = MoodDataset(csv_file=f"../../data/preprocessed/train_{model_type}.csv", mode=model_type)
+    
     study = optuna.create_study(direction='minimize')
-    study.optimize(objective, n_trials=num_trials)
+    study.optimize(lambda trial: objective(trial, device, dataset, model_type), n_trials=100)
 
-    # Save results to CSV
-    with open(csv_out, mode='w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(['trial_number', 'hidden_size', 'num_layers',
-                         'batch_size', 'learning_rate', 'sequence_length', 'num_epochs', 'avg_fold_loss'])
-        for trial in study.trials:
-            if trial.state == TrialState.COMPLETE:
-                writer.writerow([trial.number, trial.params['hidden_size'],
-                                 trial.params['num_layers'], trial.params['batch_size'],
-                                 trial.params['learning_rate'], trial.params['sequence_length'],
-                                 trial.params['num_epochs'], trial.value])
+    # Save study results to a CSV file
+    df = study.trials_dataframe()
+    df.to_csv(f"../../data/hyperparam_{model_type}_result.csv", index=False)
 
-    return study
+    print("Study statistics: ")
+    print("  Number of finished trials: ", len(study.trials))
+    print("  Best trial:")
+    trial = study.best_trial
+    print("    Value: ", trial.value)
+    print("    Params: ")
+    for key, value in trial.params.items():
+        print(f"      {key}: {value}")
 
 if __name__ == '__main__':
-    features = [
-                'activity', 'appCat.builtin', 'appCat.communication', 'appCat.entertainment',
-                'appCat.finance', 'appCat.game', 'appCat.office', 'appCat.social', 'appCat.travel',
-                'appCat.utilities', 'appCat.weather', 'call', 'circumplex.arousal', 'circumplex.valence',
-                'screen', 'sms', 'hour', 'day_of_week', 'day_of_month', 'month', 'hour_sin', 'hour_cos'
-            ]
-    
-    lstm_hyperparameter_tuning(
-        csv_file='../../data/preprocessed/train_set.csv',
-        features=features,
-        num_trials=100,
-        csv_out='../../data/hyperparam_result.csv'
-    )
+    main()
