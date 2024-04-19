@@ -6,6 +6,7 @@ import pandas as pd
 import sys
 import pdb
 import matplotlib.pyplot as plt
+import numpy as np
 
 sys.path.append('../models/')
 from lstm_data_loader import MoodDataset
@@ -39,28 +40,40 @@ def load_test_data(csv_file, batch_size, mode='classification'):
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     return test_loader
 
-def plot_true_vs_predicted(true_labels, predictions, num_samples=100, title='True vs Predicted Mood'):
-    true_labels = true_labels[:num_samples]
-    predictions = predictions[:num_samples]
+def plot_true_vs_predicted(y_test, y_pred):
+    counts = {i: 0 for i in range(11)}
+    counts_pred = {i: 0 for i in range(11)}
+    for i in range(len(y_test)):
+        counts[y_test[i]] += 1
+        counts_pred[y_pred[i]] += 1
 
-    plt.figure(figsize=(10, 5))
-    plt.plot(true_labels, label='True Mood', marker='o')
-    plt.plot(predictions, label='Predicted Mood', marker='o')
-    plt.title(title)
-    plt.xlabel('Samples')
-    plt.ylabel('Mood')
-    plt.legend()
+    x = np.arange(0, 11)
+    width = 0.4  # width of each bar
+
+    fig, ax = plt.subplots()
+    bars1 = ax.bar(x - width/2, counts.values(), width, label='True Mood', color='blue')
+    bars2 = ax.bar(x + width/2, counts_pred.values(), width, label='Predicted Mood', color='orange')
+
+    ax.set_title('True vs Predicted Mood')
+    ax.set_xlabel('Mood Categories')
+    ax.set_ylabel('Frequency')
+    ax.set_xticks(x)
+    ax.set_xticklabels(counts.keys())
+    ax.legend()
+
+    # This will display the plot in a manner similar to the image you uploaded
+    fig.tight_layout()
     plt.show()
 
 def main():
-    test_csv_file = '../../data/preprocessed/test_regression.csv'
+    test_csv_file = '../../data/preprocessed/test_classification.csv'
     batch_size = 32
-    model_type = 'regression'
+    model_type = 'classification'
 
     if model_type == 'classification':
         input_size = 38
         hidden_size = 64
-        num_layers = 2
+        num_layers = 3
         num_classes = 10
         model = LSTMClassifier(input_size, hidden_size, num_layers, num_classes)
     elif model_type == 'regression':
@@ -70,12 +83,16 @@ def main():
         output_size = 1
         model = LSTMRegressor(input_size, hidden_size, num_layers, output_size)
 
-    model.load_state_dict(torch.load(f'../../data/models/lstm_{model_type}_full.pth', map_location=device))
+    model.load_state_dict(torch.load(f'../../data/models/lstm_{model_type}_optimized_weighted.pth', map_location=device))
     model.to(device)
 
     test_loader = load_test_data(test_csv_file, batch_size, mode=model_type)
 
     true_labels, predictions = evaluate(model, test_loader, device, model_type)
+    mse = mean_squared_error(true_labels, predictions)
+    mae = mean_absolute_error(true_labels, predictions)
+    print(f'MSE: {mse:.2f}')
+    print(f'MAE: {mae:.2f}')
 
     if model_type == 'classification':
         accuracy = accuracy_score(true_labels, predictions)
@@ -87,13 +104,8 @@ def main():
         print(f'Recall: {recall:.4f}')
         print(f'F1 Score: {f1:.4f}')
         print(classification_report(true_labels, predictions))
-    elif model_type == 'regression':
-        mse = mean_squared_error(true_labels, predictions)
-        mae = mean_absolute_error(true_labels, predictions)
-        print(f'MSE: {mse:.4f}')
-        print(f'MAE: {mae:.4f}')
 
-    plot_true_vs_predicted(true_labels, predictions, title=f'{model_type.capitalize()} True vs Predicted Mood')
+    plot_true_vs_predicted(true_labels, predictions)
 
 if __name__ == '__main__':
     main()

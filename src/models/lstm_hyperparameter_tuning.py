@@ -35,9 +35,9 @@ def train_and_evaluate(model, train_loader, val_loader, criterion, optimizer, de
 def objective(trial, device, dataset, model_type):
     batch_size = trial.suggest_categorical('batch_size', [32, 64, 128])
     learning_rate = trial.suggest_float('learning_rate', 1e-5, 1e-1, log=True)
-    num_layers = trial.suggest_int('num_layers', 1, 4)
+    num_layers = trial.suggest_int('num_layers', 1, 3)
     hidden_size = trial.suggest_categorical('hidden_size', [32, 64, 128, 256])
-    num_epochs = trial.suggest_int('num_epochs', 5, 60)
+    num_epochs = trial.suggest_int('num_epochs', 50, 300)
 
     tscv = TimeSeriesSplit(n_splits=5)
     fold_losses = []
@@ -77,7 +77,7 @@ def objective(trial, device, dataset, model_type):
 
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model_type = 'regression'
+    model_type = 'classification'
     dataset = MoodDataset(csv_file=f"../../data/preprocessed/train_{model_type}.csv", mode=model_type)
     
     study = optuna.create_study(direction='minimize')

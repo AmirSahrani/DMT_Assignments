@@ -3,10 +3,41 @@ import torch.nn as nn
 import numpy as np
 from torch.utils.data import DataLoader
 from sklearn.model_selection import TimeSeriesSplit
-import pandas as pd
 from lstm_model import LSTMClassifier, LSTMRegressor
 from lstm_data_loader import MoodDataset
 import pdb
+
+def calculate_class_weights(dataset, beta=0.83):
+    """
+    Calculate class weights using the "Effective Number of Samples" method.
+    Reference: https://arxiv.org/abs/1901.05555
+
+    Args:
+    - dataset: the dataset to calculate weights for.
+    - beta: hyperparameter for class weights calculation, controlling the strength of the weighting.
+
+    Returns:
+    - torch.tensor: class weights.
+    """
+    labels = np.array([data[1] for data in dataset])
+    num_classes = 10  # Adjust if different
+    class_counts = np.bincount(labels, minlength=num_classes)
+
+    # Avoid division by zero
+    class_counts = np.maximum(class_counts, 1)
+
+    # Effective number of samples calculation
+    effective_num = 1.0 - np.power(beta, class_counts)
+    weights = (1.0 - beta) / np.array(effective_num)
+    
+    # Normalizing the weights to make the sum equal to the number of classes
+    weights = (weights / weights.sum()) * num_classes
+    
+    # Convert to torch tensor
+    class_weights = torch.tensor(weights, dtype=torch.float32)
+
+    return class_weights
+
 
 def train_model(model, train_loader, criterion, optimizer, device):
     model.train()
@@ -36,6 +67,8 @@ def cross_validate(dataset, model_type, n_splits, batch_size, input_size, hidden
     tscv = TimeSeriesSplit(n_splits=n_splits)
     fold_results = []
     
+    class_weights = calculate_class_weights(dataset) if model_type == 'classification' else None
+    
     for fold, (train_idx, val_idx) in enumerate(tscv.split(dataset)):
         print(f"Fold {fold + 1}/{n_splits}")
 
@@ -47,7 +80,7 @@ def cross_validate(dataset, model_type, n_splits, batch_size, input_size, hidden
 
         if model_type == 'classification':
             model = LSTMClassifier(input_size, hidden_size, num_layers, output_size).to(device)
-            criterion = nn.CrossEntropyLoss()
+            criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
         elif model_type == 'regression':
             model = LSTMRegressor(input_size, hidden_size, num_layers, output_size).to(device)
             criterion = nn.MSELoss()
@@ -65,48 +98,50 @@ def cross_validate(dataset, model_type, n_splits, batch_size, input_size, hidden
     return fold_results
 
 def full_training(dataset, model_type, batch_size, input_size, hidden_size, num_layers, output_size, num_epochs, learning_rate, device):
-    train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    class_weights = calculate_class_weights(dataset) if model_type == 'classification' else None
+    
     if model_type == 'classification':
         model = LSTMClassifier(input_size, hidden_size, num_layers, output_size).to(device)
-        criterion = nn.CrossEntropyLoss()
+        criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
     elif model_type == 'regression':
         model = LSTMRegressor(input_size, hidden_size, num_layers, output_size).to(device)
         criterion = nn.MSELoss()
+        
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     for epoch in range(num_epochs):
         train_loss = train_model(model, train_loader, criterion, optimizer, device)
         print(f"Epoch {epoch + 1}/{num_epochs} - Full Train Loss: {train_loss:.4f}")
 
-    torch.save(model.state_dict(), f"../../data/models/lstm_{model_type}_full.pth")
-    print(f"Full model saved as lstm_{model_type}_full.pth")
+    torch.save(model.state_dict(), f"../../data/models/lstm_{model_type}_optimized.pth")
 
 def main():
     n_splits = 5
     batch_size = 32
-    num_epochs = 50
+    num_epochs = 108
     learning_rate = 0.001
     hidden_size = 64
-    num_layers = 2
+    num_layers = 3
     num_classes = 10  # For classifier
     output_size = 1   # For regressor
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # model_type = 'classification' 
-    model_type = 'regression'
-
-    train_dataset = MoodDataset(csv_file='../../data/preprocessed/train_regression.csv', mode=model_type)
+    model_type = 'classification'  # or 'regression'
+    csv_file = '../../data/preprocessed/train_classification.csv' if model_type == 'classification' else '../../data/preprocessed/train_regression.csv'
+    train_dataset = MoodDataset(csv_file=csv_file, mode=model_type)
     input_size = train_dataset.get_num_features()
     print(f"Number of features: {input_size}")
 
     # Cross-validate using Time Series Split
-    fold_results = cross_validate(train_dataset, model_type, n_splits, batch_size, input_size, hidden_size, num_layers, num_classes if model_type == 'classification' else output_size, num_epochs, learning_rate, device)
-    average_validation_loss = np.mean(fold_results)
-    print(f"Cross-validation results: {fold_results}")
-    print(f"Average validation loss: {average_validation_loss}")
+    # fold_results = cross_validate(train_dataset, model_type, n_splits, batch_size, input_size, hidden_size, num_layers, num_classes if model_type == 'classification' else output_size, num_epochs, learning_rate, device)
+    # average_validation_loss = np.mean(fold_results)
+    # print(f"Cross-validation results: {fold_results}")
+    # print(f"Average validation loss: {average_validation_loss}")
 
     # Full training on the entire dataset
     full_training(train_dataset, model_type, batch_size, input_size, hidden_size, num_layers, num_classes if model_type == 'classification' else output_size, num_epochs, learning_rate, device)
 
 if __name__ == '__main__':
     main()
+
