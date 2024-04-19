@@ -29,4 +29,4 @@ class LSTMRegressor(nn.Module):
         c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
         out, _ = self.lstm(x, (h0, c0))
         out = self.fc(out[:, -1, :])  # Decode the hidden state of the last time step
-        return out
+        return out.squeeze(-1)

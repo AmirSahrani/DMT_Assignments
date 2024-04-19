@@ -92,10 +92,10 @@ def main():
     output_size = 1   # For regressor
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    model_type = 'classification' 
-    # model_type = 'regression'
+    # model_type = 'classification' 
+    model_type = 'regression'
 
-    train_dataset = MoodDataset(csv_file='../../data/preprocessed/train_classification.csv', mode=model_type)
+    train_dataset = MoodDataset(csv_file='../../data/preprocessed/train_regression.csv', mode=model_type)
     input_size = train_dataset.get_num_features()
     print(f"Number of features: {input_size}")
 

@@ -1,6 +1,7 @@
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 import torch
+import pdb
 
 class MoodDataset(Dataset):
     def __init__(self, csv_file, sequence_length=5, mode='regression'):
@@ -15,7 +16,7 @@ class MoodDataset(Dataset):
         self.mode = mode
 
         # Exclude non-feature columns
-        features_columns = self.data_frame.drop(columns=['id', 'day', 'time', 'mood', 'appCat.unknown', 'appCat.other', 'appCat.entertainment'])
+        features_columns = self.data_frame.drop(columns=['id', 'day', 'time', 'mood', 'appCat.unknown', 'appCat.other', 'month', 'appCat.communication', 'screen'])
         self.features = torch.tensor(features_columns.values, dtype=torch.float32)
 
         if mode == 'classification':
@@ -26,7 +27,7 @@ class MoodDataset(Dataset):
             self.labels = torch.tensor(self.data_frame['mood'].values, dtype=torch.float32)
 
         self.feature_sequences, self.label_sequences = self._create_sequences()
-
+    
     def _create_sequences(self):
         """
         Generates sequences of features and corresponding labels from sorted and grouped data
@@ -34,7 +35,7 @@ class MoodDataset(Dataset):
         feature_sequences, label_sequences = [], []
         grouped = self.data_frame.groupby('id')
         for _, group in grouped:
-            group_features = torch.tensor(group.drop(columns=['id', 'day', 'time', 'mood', 'appCat.unknown', 'appCat.other', 'appCat.entertainment']).values, dtype=torch.float32)
+            group_features = torch.tensor(group.drop(columns=['id', 'day', 'time', 'mood', 'appCat.unknown', 'appCat.other', 'month', 'appCat.communication', 'screen']).values, dtype=torch.float32)
             group_labels = torch.tensor(group['mood'].values, dtype=torch.long if self.mode == 'classification' else torch.float32)
             num_sequences = len(group) - self.sequence_length + 1
             for i in range(num_sequences):

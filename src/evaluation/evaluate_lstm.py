@@ -53,9 +53,9 @@ def plot_true_vs_predicted(true_labels, predictions, num_samples=100, title='Tru
     plt.show()
 
 def main():
-    test_csv_file = '../../data/preprocessed/test_classification.csv'
+    test_csv_file = '../../data/preprocessed/test_regression.csv'
     batch_size = 32
-    model_type = 'classification'
+    model_type = 'regression'
 
     if model_type == 'classification':
         input_size = 38
@@ -64,7 +64,7 @@ def main():
         num_classes = 10
         model = LSTMClassifier(input_size, hidden_size, num_layers, num_classes)
     elif model_type == 'regression':
-        input_size = 35
+        input_size = 36
         hidden_size = 64
         num_layers = 2
         output_size = 1
