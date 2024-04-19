@@ -1,11 +1,34 @@
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.linear_model import Ridge
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.model_selection import GridSearchCV
 from sklearn.feature_selection import SequentialFeatureSelector
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+
+plt.rcParams.update({
+    "font.family": "serif",
+    "font.size": 18,
+    "axes.titlesize": 18,
+    "axes.labelsize": 14,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12,
+    "legend.fontsize": 12,
+    "figure.figsize": (8, 6),
+    "figure.dpi": 100,
+    "savefig.dpi": 200,
+    "savefig.format": "png",
+    "savefig.transparent": True,
+    "axes.grid": True,
+    "grid.linewidth": 0.5,
+    "grid.linestyle": "--",
+    "grid.color": "0.8",
+    "image.cmap": "Blues",
+    "lines.linewidth": 1.5,
+    "lines.markersize": 6,
+    "text.usetex": True, "mathtext.fontset": "cm",
+    "pgf.preamble": r"\usepackage[utf8]{inputenc}\usepackage[T1]{fontenc}\usepackage{cmbright}"
+})
 
 
 def data_numeric(data):
@@ -67,13 +90,28 @@ def main():
     # gp = GaussianProcessRegressor(alpha=1e-2, n_restarts_optimizer=10, normalize_y=True, random_state=42)
     # Using ridge regression
     gp = KernelRidge()
-    methods = ['additive_chi2', 'chi2', 'linear', 'poly', 'polynomial', 'rbf', 'laplacian', 'sigmoid', 'cosine']
-    param_grid = {'kernel': methods}
+    methods = ['linear', 'poly', 'polynomial', 'rbf', 'laplacian', 'sigmoid', 'cosine']
+    alphas = np.linspace(0.2, 1.3, num=7)  # Example range of alpha values
+    methods = ['linear']
+    alphas = [0.07]
+    param_grid = {
+        'kernel': methods,
+        'alpha': alphas
+    }
 
     # Perform grid search with cross-validation
     folds = 5
-    grid_search = GridSearchCV(estimator=gp, param_grid=param_grid, cv=folds)
+    grid_search = GridSearchCV(estimator=gp, param_grid=param_grid, cv=folds, verbose=False, scoring='neg_mean_squared_error', error_score=True)
     grid_search.fit(X_train, y_train)
+    df = pd.DataFrame(grid_search.cv_results_)
+    df = df.drop('params', axis=1)
+    df = df.dropna(axis=1)
+    df = df.sort_values(by='rank_test_score')
+    print(grid_search.cv_results_.keys())
+    df = df[['mean_test_score', 'std_test_score', 'rank_test_score']]
+    # remove underscores from column naames and capitalize
+    df.columns = [col.replace('_', ' ').capitalize() for col in df.columns]
+    print(df.to_latex())
 
     # Get the best model and its parameters
     best_model = grid_search.best_estimator_
@@ -82,6 +120,7 @@ def main():
 
     print(f"Best Kernel Method: {best_method}")
     print(f"Best Model Parameters: {best_params}")
+    print(f"Best Model Penalty: {best_params['alpha']:.2f}")
     print(f"Best Model Train Score: {best_model.score(X_train, y_train):.2f}")
     print(f"Best Model Test Score: {best_model.score(X_test, y_test):.2f}")
 
@@ -101,14 +140,39 @@ def main():
     mse = np.mean((y_pred_unround - y_test) ** 2)
     mae = np.mean(np.abs(y_pred_unround - y_test))
 
+    mse_rounded = np.mean((y_pred - y_test) ** 2)
+    mae_rounded = np.mean(np.abs(y_pred - y_test))
+
+    # create latex table for mse
+    df = pd.DataFrame({
+        'MSE': [mse, mse_rounded],
+        'MAE': [mae, mae_rounded]
+    }, index=['Unrounded', 'Rounded'])
+    print(df.to_latex(float_format="%.2f"))
+
     print(f'Mean Squared Error: {mse:.2f}')
     print(f'Mean Absolute Error: {mae:.2f}')
     print(f'Accuracy: {sum(y_pred == y_test)/len(y_test)}%')
 
-    plt.plot(np.arange(len(y_pred)), y_pred, label='Predicted')
-    plt.plot(np.arange(len(y_test)), y_test, label='True')
-    plt.ylim(0, 10)
+    counts = {i: 0 for i in range(11)}
+    counts_pred = {i: 0 for i in range(11)}
+    for i in range(len(y_test)):
+        counts[y_test[i]] += 1
+        counts_pred[y_pred[i]] += 1
+
+    x = np.arange(0, 11)
+    width = 0.4  # width of each bar
+
+    plt.bar(x - width / 2, counts.values(), width=width, label='True Mood')
+    plt.bar(x + width / 2, counts_pred.values(), width=width, label='Predicted Mood')
+    plt.title('True vs Predicted Mood')
+    plt.xlabel('Mood')
+    plt.ylabel('Frequency')
+
+    # Set the x-axis ticks to be in the middle>
+
     plt.legend()
+    plt.savefig('../../figures/mood_pred_ridge.png')
     plt.show()
 
 
