@@ -10,7 +10,6 @@ class LSTMClassifier(nn.Module):
         self.fc = nn.Linear(hidden_size, num_classes)
 
     def forward(self, x):
-        x = x.unsqueeze(1)  # Reshape from [batch, features] to [batch, 1, features]
         h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
         c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
         out, _ = self.lstm(x, (h0, c0))
@@ -26,7 +25,6 @@ class LSTMRegressor(nn.Module):
         self.fc = nn.Linear(hidden_size, output_size)  # Adjust for the number of output features
 
     def forward(self, x):
-        x = x.unsqueeze(1)  # Reshape from [batch, features] to [batch, 1, features]
         h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
         c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
         out, _ = self.lstm(x, (h0, c0))

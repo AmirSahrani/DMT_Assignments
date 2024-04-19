@@ -53,12 +53,12 @@ def plot_true_vs_predicted(true_labels, predictions, num_samples=100, title='Tru
     plt.show()
 
 def main():
-    test_csv_file = '../../data/preprocessed/test_regression.csv'
+    test_csv_file = '../../data/preprocessed/test_classification.csv'
     batch_size = 32
-    model_type = 'regression'
+    model_type = 'classification'
 
     if model_type == 'classification':
-        input_size = 35
+        input_size = 38
         hidden_size = 64
         num_layers = 2
         num_classes = 10
