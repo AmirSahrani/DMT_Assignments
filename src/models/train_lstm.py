@@ -38,6 +38,33 @@ def calculate_class_weights(dataset, beta=0.83):
 
     return class_weights
 
+def calculate_regression_weights(y_train, num_bins=10, smoothing_factor=0.1, majority_penalty=2):
+    bin_edges = np.histogram_bin_edges(y_train, bins=num_bins)
+    bin_counts = np.histogram(y_train, bins=bin_edges)[0]
+    
+    weights = 1.0 / (np.power(bin_counts, majority_penalty) + smoothing_factor)
+    
+    # To prevent too much penalty on the majority class
+    min_weight = np.percentile(weights, 50) 
+    weights = np.maximum(weights, min_weight)
+
+    # Normalize the weights to maintain the loss scale
+    weights /= np.mean(weights)
+    
+    return torch.tensor(weights, dtype=torch.float32), bin_edges
+
+class WeightedMAELoss(nn.Module):
+    def __init__(self, bin_edges, bin_weights):
+        super().__init__()
+        self.bin_edges = bin_edges
+        self.bin_weights = bin_weights
+
+    def forward(self, predicted, target):
+        bin_indices = np.digitize(target.cpu().numpy(), self.bin_edges) - 1
+        bin_indices = np.clip(bin_indices, 0, len(self.bin_weights) - 1)
+        weights = self.bin_weights[bin_indices].to(predicted.device)
+        loss = torch.abs(predicted.squeeze() - target) * weights
+        return loss.mean()
 
 def train_model(model, train_loader, criterion, optimizer, device):
     model.train()
@@ -106,7 +133,9 @@ def full_training(dataset, model_type, batch_size, input_size, hidden_size, num_
         criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
     elif model_type == 'regression':
         model = LSTMRegressor(input_size, hidden_size, num_layers, output_size).to(device)
-        criterion = nn.L1Loss()
+        y_train = np.array([data[1] for data in dataset])
+        weights, bin_edges = calculate_regression_weights(y_train)
+        criterion = WeightedMAELoss(bin_edges, weights).to(device)
         
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -114,15 +143,15 @@ def full_training(dataset, model_type, batch_size, input_size, hidden_size, num_
         train_loss = train_model(model, train_loader, criterion, optimizer, device)
         print(f"Epoch {epoch + 1}/{num_epochs} - Full Train Loss: {train_loss:.4f}")
 
-    torch.save(model.state_dict(), f"../../data/models/lstm_{model_type}_optimized.pth")
+    torch.save(model.state_dict(), f"../../data/models/lstm_{model_type}_unoptimized.pth")
 
 def main():
     n_splits = 5
-    batch_size = 128
-    num_epochs = 187
-    learning_rate = 0.0001
+    batch_size = 32
+    num_epochs = 50
+    learning_rate = 0.001
     hidden_size = 64
-    num_layers = 3
+    num_layers = 2
     num_classes = 10  # For classifier
     output_size = 1   # For regressor
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

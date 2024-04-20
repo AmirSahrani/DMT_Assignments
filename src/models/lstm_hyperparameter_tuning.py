@@ -33,11 +33,11 @@ def train_and_evaluate(model, train_loader, val_loader, criterion, optimizer, de
     return total_val_loss / total_samples
 
 def objective(trial, device, dataset, model_type):
-    batch_size = trial.suggest_categorical('batch_size', [32, 64, 128])
+    batch_size = trial.suggest_categorical('batch_size', [8, 16, 32])
     learning_rate = trial.suggest_float('learning_rate', 1e-5, 1e-1, log=True)
     num_layers = trial.suggest_int('num_layers', 1, 3)
     hidden_size = trial.suggest_categorical('hidden_size', [32, 64, 128])
-    num_epochs = trial.suggest_int('num_epochs', 50, 300)
+    num_epochs = trial.suggest_int('num_epochs', 50, 200)
 
     tscv = TimeSeriesSplit(n_splits=5)
     fold_losses = []

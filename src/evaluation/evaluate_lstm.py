@@ -66,10 +66,8 @@ def plot_true_vs_predicted(y_test, y_pred):
     plt.show()
 
 def plot_true_vs_predicted_histogram(y_test, y_pred):
-    # Define bins for the histogram
-    min_val = min(min(y_test), min(y_pred))
-    max_val = max(max(y_test), max(y_pred))
-    bins = np.linspace(min_val, max_val, 11)  # Creates 10 bins
+    # Define bin edges to match the categories in the histogram
+    bins = np.arange(-0.5, 11, 1)  # Bin edges from -0.5 to 10.5
 
     # Digitize categorizes the data into bins
     y_test_bins = np.digitize(y_test, bins) - 1  # -1 to convert bins to 0-based index
@@ -83,22 +81,22 @@ def plot_true_vs_predicted_histogram(y_test, y_pred):
         counts_pred[i] = np.sum(y_pred_bins == i)
 
     # Set up the plot
-    x = np.arange(len(bins) - 1)
+    x = np.arange(len(bins) - 1)  # The label locations
     width = 0.4  # Width of the bars
 
-    plt.figure(figsize=(10, 6))
-    plt.bar(x - width/2, counts, width, label='True Values', color='blue')
-    plt.bar(x + width/2, counts_pred, width, label='Predicted Values', color='orange')
-    plt.title('Histogram of True vs Predicted Values')
-    plt.xlabel('Value Ranges')
+    plt.figure(figsize=(10, 8))
+    plt.bar(x - width/2, counts, width, label='True Mood', color='blue')
+    plt.bar(x + width/2, counts_pred, width, label='Predicted Mood', color='orange')
+    plt.title('True vs Predicted Mood with LSTM Regression')
+    plt.xlabel('Mood Score')
     plt.ylabel('Frequency')
-    plt.xticks(x, [f"{bins[i]:.2f}-{bins[i+1]:.2f}" for i in range(len(bins)-1)], rotation=45)
+    plt.xticks(x, labels=[str(i) for i in range(11)])
     plt.legend()
     plt.show()
 
 def main():
     test_csv_file = '../../data/preprocessed/test_regression.csv'
-    batch_size = 128
+    batch_size = 32
     model_type = 'regression'
 
     if model_type == 'classification':
@@ -110,11 +108,11 @@ def main():
     elif model_type == 'regression':
         input_size = 38
         hidden_size = 64
-        num_layers = 3
+        num_layers = 2
         output_size = 1
         model = LSTMRegressor(input_size, hidden_size, num_layers, output_size)
 
-    model.load_state_dict(torch.load(f'../../data/models/lstm_{model_type}_optimized.pth', map_location=device))
+    model.load_state_dict(torch.load(f'../../data/models/lstm_{model_type}_unoptimized.pth', map_location=device))
     model.to(device)
 
     test_loader = load_test_data(test_csv_file, batch_size, mode=model_type)
