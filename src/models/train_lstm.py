@@ -106,7 +106,7 @@ def full_training(dataset, model_type, batch_size, input_size, hidden_size, num_
         criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
     elif model_type == 'regression':
         model = LSTMRegressor(input_size, hidden_size, num_layers, output_size).to(device)
-        criterion = nn.MSELoss()
+        criterion = nn.L1Loss()
         
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -118,16 +118,16 @@ def full_training(dataset, model_type, batch_size, input_size, hidden_size, num_
 
 def main():
     n_splits = 5
-    batch_size = 32
-    num_epochs = 108
-    learning_rate = 0.001
+    batch_size = 128
+    num_epochs = 187
+    learning_rate = 0.0001
     hidden_size = 64
     num_layers = 3
     num_classes = 10  # For classifier
     output_size = 1   # For regressor
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    model_type = 'classification'  # or 'regression'
+    model_type = 'regression'  # or 'regression'
     csv_file = '../../data/preprocessed/train_classification.csv' if model_type == 'classification' else '../../data/preprocessed/train_regression.csv'
     train_dataset = MoodDataset(csv_file=csv_file, mode=model_type)
     input_size = train_dataset.get_num_features()

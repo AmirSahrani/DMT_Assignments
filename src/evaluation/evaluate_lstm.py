@@ -65,10 +65,41 @@ def plot_true_vs_predicted(y_test, y_pred):
     fig.tight_layout()
     plt.show()
 
+def plot_true_vs_predicted_histogram(y_test, y_pred):
+    # Define bins for the histogram
+    min_val = min(min(y_test), min(y_pred))
+    max_val = max(max(y_test), max(y_pred))
+    bins = np.linspace(min_val, max_val, 11)  # Creates 10 bins
+
+    # Digitize categorizes the data into bins
+    y_test_bins = np.digitize(y_test, bins) - 1  # -1 to convert bins to 0-based index
+    y_pred_bins = np.digitize(y_pred, bins) - 1
+
+    # Count occurrences in each bin
+    counts = np.zeros(len(bins) - 1)
+    counts_pred = np.zeros(len(bins) - 1)
+    for i in range(len(bins) - 1):
+        counts[i] = np.sum(y_test_bins == i)
+        counts_pred[i] = np.sum(y_pred_bins == i)
+
+    # Set up the plot
+    x = np.arange(len(bins) - 1)
+    width = 0.4  # Width of the bars
+
+    plt.figure(figsize=(10, 6))
+    plt.bar(x - width/2, counts, width, label='True Values', color='blue')
+    plt.bar(x + width/2, counts_pred, width, label='Predicted Values', color='orange')
+    plt.title('Histogram of True vs Predicted Values')
+    plt.xlabel('Value Ranges')
+    plt.ylabel('Frequency')
+    plt.xticks(x, [f"{bins[i]:.2f}-{bins[i+1]:.2f}" for i in range(len(bins)-1)], rotation=45)
+    plt.legend()
+    plt.show()
+
 def main():
-    test_csv_file = '../../data/preprocessed/test_classification.csv'
-    batch_size = 32
-    model_type = 'classification'
+    test_csv_file = '../../data/preprocessed/test_regression.csv'
+    batch_size = 128
+    model_type = 'regression'
 
     if model_type == 'classification':
         input_size = 38
@@ -77,13 +108,13 @@ def main():
         num_classes = 10
         model = LSTMClassifier(input_size, hidden_size, num_layers, num_classes)
     elif model_type == 'regression':
-        input_size = 36
+        input_size = 38
         hidden_size = 64
-        num_layers = 2
+        num_layers = 3
         output_size = 1
         model = LSTMRegressor(input_size, hidden_size, num_layers, output_size)
 
-    model.load_state_dict(torch.load(f'../../data/models/lstm_{model_type}_optimized_weighted.pth', map_location=device))
+    model.load_state_dict(torch.load(f'../../data/models/lstm_{model_type}_optimized.pth', map_location=device))
     model.to(device)
 
     test_loader = load_test_data(test_csv_file, batch_size, mode=model_type)
@@ -91,8 +122,8 @@ def main():
     true_labels, predictions = evaluate(model, test_loader, device, model_type)
     mse = mean_squared_error(true_labels, predictions)
     mae = mean_absolute_error(true_labels, predictions)
-    print(f'MSE: {mse:.2f}')
-    print(f'MAE: {mae:.2f}')
+    print(f'MSE: {mse:.3f}')
+    print(f'MAE: {mae:.3f}')
 
     if model_type == 'classification':
         accuracy = accuracy_score(true_labels, predictions)
@@ -104,8 +135,11 @@ def main():
         print(f'Recall: {recall:.4f}')
         print(f'F1 Score: {f1:.4f}')
         print(classification_report(true_labels, predictions))
+        plot_true_vs_predicted(true_labels, predictions)
+    else:
+        plot_true_vs_predicted_histogram(true_labels, predictions)
 
-    plot_true_vs_predicted(true_labels, predictions)
+    
 
 if __name__ == '__main__':
     main()

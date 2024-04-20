@@ -36,7 +36,7 @@ def objective(trial, device, dataset, model_type):
     batch_size = trial.suggest_categorical('batch_size', [32, 64, 128])
     learning_rate = trial.suggest_float('learning_rate', 1e-5, 1e-1, log=True)
     num_layers = trial.suggest_int('num_layers', 1, 3)
-    hidden_size = trial.suggest_categorical('hidden_size', [32, 64, 128, 256])
+    hidden_size = trial.suggest_categorical('hidden_size', [32, 64, 128])
     num_epochs = trial.suggest_int('num_epochs', 50, 300)
 
     tscv = TimeSeriesSplit(n_splits=5)
@@ -57,7 +57,7 @@ def objective(trial, device, dataset, model_type):
             criterion = nn.CrossEntropyLoss()
         elif model_type == 'regression':
             model = LSTMRegressor(input_size, hidden_size, num_layers, output_size).to(device)
-            criterion = nn.MSELoss()
+            criterion = nn.L1Loss()
 
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -77,7 +77,7 @@ def objective(trial, device, dataset, model_type):
 
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model_type = 'classification'
+    model_type = 'regression'
     dataset = MoodDataset(csv_file=f"../../data/preprocessed/train_{model_type}.csv", mode=model_type)
     
     study = optuna.create_study(direction='minimize')
