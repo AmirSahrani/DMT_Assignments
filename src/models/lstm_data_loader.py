@@ -1,10 +1,12 @@
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
+import matplotlib.pyplot as plt
 import torch
 import pdb
 
+
 class MoodDataset(Dataset):
-    def __init__(self, csv_file, sequence_length=5, mode='regression'):
+    def __init__(self, csv_file, sequence_length=1, mode='regression'):
         """
         Args:
             csv_file (string): Path to the csv file with data.
@@ -27,7 +29,7 @@ class MoodDataset(Dataset):
             self.labels = torch.tensor(self.data_frame['mood'].values, dtype=torch.float32)
 
         self.feature_sequences, self.label_sequences = self._create_sequences()
-    
+
     def _create_sequences(self):
         """
         Generates sequences of features and corresponding labels from sorted and grouped data
@@ -48,6 +50,6 @@ class MoodDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.feature_sequences[idx], self.label_sequences[idx]
-    
+
     def get_num_features(self):
         return self.features.shape[1]
