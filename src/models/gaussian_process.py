@@ -1,3 +1,4 @@
+import os
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.model_selection import GridSearchCV
@@ -6,29 +7,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-plt.rcParams.update({
-    "font.family": "serif",
-    "font.size": 18,
-    "axes.titlesize": 18,
-    "axes.labelsize": 14,
-    "xtick.labelsize": 12,
-    "ytick.labelsize": 12,
-    "legend.fontsize": 12,
-    "figure.figsize": (8, 6),
-    "figure.dpi": 100,
-    "savefig.dpi": 200,
-    "savefig.format": "png",
-    "savefig.transparent": True,
-    "axes.grid": True,
-    "grid.linewidth": 0.5,
-    "grid.linestyle": "--",
-    "grid.color": "0.8",
-    "image.cmap": "Blues",
-    "lines.linewidth": 1.5,
-    "lines.markersize": 6,
-    "text.usetex": True, "mathtext.fontset": "cm",
-    "pgf.preamble": r"\usepackage[utf8]{inputenc}\usepackage[T1]{fontenc}\usepackage{cmbright}"
-})
+
+if isinstance(os.path, str):
+    pass
+else:
+    os._path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+    print('File is lstm_eval, loc is:', os._path)
 
 
 def data_numeric(data):
@@ -48,7 +32,7 @@ def feature_selection(X, y):
     return columns
 
 
-def main():
+def main(visualize=True):
     # Load and preprocess data
     data = pd.read_csv('../../data/preprocessed/train_final.csv')
     # data = data.drop(columns=time_columns, axis=1)
@@ -60,9 +44,9 @@ def main():
     print(len(data_numerical.columns))
 
     # Define features and target
-    y_train = data_numerical.pop('mood_lag_5').values
+    y_train = data_numerical.pop('mood').values
     X_train = data_numerical.values
-    y_test = test_data_numerical.pop('mood_lag_5').values
+    y_test = test_data_numerical.pop('mood').values
     X_test = test_data_numerical.values
 
     # output shapes of the split data
@@ -163,17 +147,20 @@ def main():
     x = np.arange(0, 11)
     width = 0.4  # width of each bar
 
-    plt.bar(x - width / 2, counts.values(), width=width, label='True Mood')
-    plt.bar(x + width / 2, counts_pred.values(), width=width, label='Predicted Mood')
-    plt.title('True vs Predicted Mood')
-    plt.xlabel('Mood')
-    plt.ylabel('Frequency')
+    if visualize:
+        plt.bar(x - width / 2, counts.values(), width=width, label='True Mood')
+        plt.bar(x + width / 2, counts_pred.values(), width=width, label='Predicted Mood')
+        plt.title('True vs Predicted Mood')
+        plt.xlabel('Mood')
+        plt.ylabel('Frequency')
 
-    # Set the x-axis ticks to be in the middle>
+        # Set the x-axis ticks to be in the middle>
 
-    plt.legend()
-    plt.savefig('../../figures/mood_pred_ridge.png')
-    plt.show()
+        plt.legend()
+        plt.savefig('../../figures/mood_pred_ridge.png')
+        plt.show()
+
+    return y_test, y_pred
 
 
 if __name__ == '__main__':

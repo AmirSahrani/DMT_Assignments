@@ -6,7 +6,8 @@ from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import TimeSeriesSplit
 import optuna
 from lstm_model import LSTMClassifier, LSTMRegressor
-from lstm_data_loader import MoodDataset 
+from lstm_data_loader import MoodDataset
+
 
 def train_and_evaluate(model, train_loader, val_loader, criterion, optimizer, device, num_epochs):
     model.train()
@@ -31,6 +32,7 @@ def train_and_evaluate(model, train_loader, val_loader, criterion, optimizer, de
             total_samples += inputs.size(0)
 
     return total_val_loss / total_samples
+
 
 def objective(trial, device, dataset, model_type):
     batch_size = trial.suggest_categorical('batch_size', [8, 16, 32])
@@ -75,11 +77,12 @@ def objective(trial, device, dataset, model_type):
 
     return avg_loss
 
+
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model_type = 'regression'
     dataset = MoodDataset(csv_file=f"../../data/preprocessed/train_{model_type}.csv", mode=model_type)
-    
+
     study = optuna.create_study(direction='minimize')
     study.optimize(lambda trial: objective(trial, device, dataset, model_type), n_trials=100)
 
@@ -95,6 +98,7 @@ def main():
     print("    Params: ")
     for key, value in trial.params.items():
         print(f"      {key}: {value}")
+
 
 if __name__ == '__main__':
     main()
